@@ -1,0 +1,2 @@
+Error: User login failed due to typo in code
+Formatting issue: missing newline
