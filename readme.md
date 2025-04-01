@@ -38,6 +38,9 @@ pip install -r requirements.txt
 # Set the root directory
 export PYTHONPATH="/path/to/MegaTTS3:$PYTHONPATH" #Linux/Mac
 set PYTHONPATH="C:\path\to\MegaTTS3;%PYTHONPATH%" #Windows
+
+# Install pynini using conda (for Windows users)
+conda install -c conda-forge pynini=2.1.5
 ```
 **Model Download**
 

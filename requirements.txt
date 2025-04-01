@@ -15,3 +15,4 @@ torchdiffeq==0.2.5
 openai-whisper==20240930
 httpx==0.23.3
 gradio
+pynini==2.1.5
