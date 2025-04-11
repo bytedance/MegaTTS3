@@ -115,7 +115,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("tts_performance.log"),
+        logging.FileHandler("performance.log"),
         logging.StreamHandler()
     ]
 )
