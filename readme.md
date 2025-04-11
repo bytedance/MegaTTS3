@@ -73,7 +73,7 @@ conda install -y -c conda-forge pynini==2.1.5
 pip install WeTextProcessing==1.0.3
 
 # [Optional] If you want GPU inference, you may need to install specific version of PyTorch for your GPU from https://pytorch.org/.
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # [Note] if you encounter bugs related with `ffprobe` or `ffmpeg`, you can install it through `conda install -c conda-forge ffmpeg`
 
