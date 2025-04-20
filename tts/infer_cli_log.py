@@ -37,89 +37,108 @@ from tts.utils.text_utils.text_encoder import TokenTextEncoder
 from tts.utils.text_utils.split_text import chunk_text_chinese, chunk_text_english, chunk_text_chinesev2
 from tts.utils.commons.hparams import hparams, set_hparams
 
-# Performance tracking setup
 class PerformanceTracker:
-    """Track performance metrics for MegaTTS inference."""
-    
-    def __init__(self):
+    def __init__(self, output_file="timing_logging.log"):
         self.metrics = {}
-        self.start_time = None
-        self.current_section = None
-    
+        self.active_sections = {}
+        self.section_hierarchy = {}
+        self.current_section_path = []
+        self.output_file = output_file
+
+        # Configure logger for timing information
+        self.logger = logging.getLogger("perftracker")
+        self.logger.setLevel(logging.INFO)
+
+        console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter('%(message)s')
+        console_handler.setFormatter(console_formatter)
+        self.logger.addHandler(console_handler)
+
+        file_handler = logging.FileHandler(output_file)
+        file_handler.setFormatter(console_formatter)
+        self.logger.addHandler(file_handler)
+
+        self.logger.propagate = False
+
     def start_section(self, section_name):
-        """Start timing a specific section."""
-        if self.current_section:
-            logging.warning(f"Starting {section_name} while {self.current_section} is still running")
+        # Add to current path
+        self.current_section_path.append(section_name)
+        current_path = ".".join(self.current_section_path)
         
-        self.current_section = section_name
-        self.start_time = time.time()
-        logging.info(f"Starting: {section_name}")
+        # Store start time
+        self.active_sections[current_path] = time.time()
         
+        # Add to hierarchy
+        if len(self.current_section_path) > 1:
+            parent = ".".join(self.current_section_path[:-1])
+            if parent not in self.section_hierarchy:
+                self.section_hierarchy[parent] = []
+            if section_name not in self.section_hierarchy[parent]:
+                self.section_hierarchy[parent].append(section_name)
+                
+        self.logger.info(f">>     Starting: {section_name}")
+
     def end_section(self, section_name=None):
-        """End timing a specific section and record the time."""
-        if section_name is None:
-            section_name = self.current_section
+        if not self.current_section_path:
+            return 0
             
-        if section_name != self.current_section:
-            logging.warning(f"Ending {section_name} but {self.current_section} is currently running")
+        current_path = ".".join(self.current_section_path)
+        section_name = self.current_section_path[-1]
+        
+        # Calculate duration
+        if current_path in self.active_sections:
+            duration = time.time() - self.active_sections[current_path]
+            del self.active_sections[current_path]
             
-        duration = time.time() - self.start_time
+            # Store metrics
+            if current_path not in self.metrics:
+                self.metrics[current_path] = []
+            
+            self.metrics[current_path].append(duration)
+            self.logger.info(f"--     Completed: {section_name} - {duration:.4f}s")
+            
+            self.current_section_path.pop()
+            
+            return duration
         
-        if section_name not in self.metrics:
-            self.metrics[section_name] = []
-        
-        self.metrics[section_name].append(duration)
-        logging.info(f"Completed: {section_name} - {duration:.4f}s")
-        self.current_section = None
-        
-        return duration
-    
-    def get_metrics(self):
-        """Get recorded metrics."""
-        result = {}
-        for section, times in self.metrics.items():
-            result[section] = {
-                "times": times,
-                "mean": sum(times) / len(times) if times else 0,
-                "min": min(times) if times else 0,
-                "max": max(times) if times else 0,
-                "count": len(times)
-            }
-        return result
-    
+        return 0
+
     def log_summary(self):
-        """Log a summary of all metrics."""
-        metrics = self.get_metrics()
-        logging.info("=== Performance Summary ===")
+        self.logger.info("\n" + "=" * 50)
+        self.logger.info("PERFORMANCE SUMMARY ALPHABETICALLY")
+        self.logger.info("=" * 50)
         
-        for section, stats in metrics.items():
-            logging.info(f"{section}: ")
-            logging.info(f"  Count: {stats['count']}")
-            logging.info(f"  Mean: {stats['mean']:.4f}s")
-            logging.info(f"  Min: {stats['min']:.4f}s")
-            logging.info(f"  Max: {stats['max']:.4f}s")
+        root_sections = []
+        for path in self.metrics.keys():
+            if "." not in path:
+                root_sections.append(path)
+                
+        for section in sorted(root_sections):
+            self._print_section_stats(section, level=0)
+            
+        self.logger.info("=" * 50)
+
+    def _print_section_stats(self, section_path, level=0):
+        indent = "  " * level
+        section_name = section_path.split(".")[-1]
+        times = self.metrics[section_path]
         
-        logging.info("=========================")
+        self.logger.info(f"{indent}+ {section_name}: {times[0]:.4f}s")
+
+        # Print children if any
+        if section_path in self.section_hierarchy:
+            for child in sorted(self.section_hierarchy[section_path]):
+                child_path = f"{section_path}.{child}"
+                if child_path in self.metrics:
+                    self._print_section_stats(child_path, level + 1)
 
     @contextmanager
     def track(self, section_name):
-        """Context manager for tracking a code section."""
         self.start_section(section_name)
         try:
             yield
         finally:
-            self.end_section(section_name)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("performance.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("MegaTTS-Perf")
+            self.end_section()
 
 if "TOKENIZERS_PARALLELISM" not in os.environ:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -158,7 +177,7 @@ class MegaTTS3DiTInfer():
             dur_ckpt_path='duration_lm',
             g2p_exp_name='g2p',
             precision=torch.float16,
-            enable_profiling=True,
+            enable_logging=True,
             **kwargs
         ):
         self.sr = 24000
@@ -167,10 +186,10 @@ class MegaTTS3DiTInfer():
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
         self.precision = precision
-        
+
         # Initialize performance tracker
-        self.enable_profiling = enable_profiling
-        self.perf_tracker = PerformanceTracker() if enable_profiling else None
+        self.enable_logging = enable_logging
+        self.perf_tracker = PerformanceTracker() if enable_logging else None
 
         # build models
         with self._track("model_initialization"):
@@ -188,8 +207,8 @@ class MegaTTS3DiTInfer():
         self.loudness_meter = pyln.Meter(self.sr)
 
     def _track(self, section_name):
-        """Helper method to use the performance tracker."""
-        if self.enable_profiling and self.perf_tracker:
+        """Track time and performance"""
+        if self.enable_logging and self.perf_tracker:
             return self.perf_tracker.track(section_name)
         else:
             # Return a no-op context manager
@@ -274,6 +293,7 @@ class MegaTTS3DiTInfer():
         with self._track("preprocess_total"):
             with self._track("load_wav"):
                 wav_bytes = convert_to_wav_bytes(audio_bytes)
+
                 ''' Load wav '''
                 wav, _ = librosa.core.load(wav_bytes, sr=self.sr)
                 # Pad wav if necessary
@@ -303,7 +323,7 @@ class MegaTTS3DiTInfer():
                     ''' Duration Prompting '''
                     self.dur_model.hparams["infer_top_k"] = topk_dur if topk_dur > 1 else None
                     incremental_state_dur_prompt, ctx_dur_tokens = make_dur_prompt(self, mel2ph_ref, ph_ref, tone_ref)
-            
+                    
             return {
                 'ph_ref': ph_ref,
                 'tone_ref': tone_ref,
@@ -339,31 +359,31 @@ class MegaTTS3DiTInfer():
 
                 all_seg_times = []
                 for seg_i, text in enumerate(text_segs):
-                    with self._track(f"segment_{seg_i}_total"):
+                    with self._track(f"segment_{seg_i}"):
                         segment_start = time.time()
-                        
-                        with self._track(f"segment_{seg_i}_g2p"):
+
+                        with self._track(f"g2p"):
                             ''' G2P '''
                             ph_pred, tone_pred = g2p(self, text)
 
-                        with self._track(f"segment_{seg_i}_duration"):
+                        with self._track(f"duration_predict"):
                             ''' Duration Prediction '''
                             mel2ph_pred = dur_pred(self, ctx_dur_tokens, incremental_state_dur_prompt, ph_pred, tone_pred, seg_i, dur_disturb, dur_alpha, is_first=seg_i==0, is_final=seg_i==len(text_segs)-1)
                         
-                        with self._track(f"segment_{seg_i}_prepare_inputs"):
+                        with self._track(f"prepare_inputs"):
                             inputs = prepare_inputs_for_dit(self, mel2ph_ref, mel2ph_pred, ph_ref, tone_ref, ph_pred, tone_pred, vae_latent)
                         
-                        with self._track(f"segment_{seg_i}_dit_inference"):
+                        with self._track(f"dit_inference"):
                             # Speech dit inference
                             with torch.cuda.amp.autocast(dtype=self.precision, enabled=True):
                                 x = self.dit.inference(inputs, timesteps=time_step, seq_cfg_w=[p_w, t_w]).float()
-                        
-                        with self._track(f"segment_{seg_i}_wavvae_decode"):
+
+                        with self._track(f"wavvae_decode"):
                             # WavVAE decode
                             x[:, :vae_latent.size(1)] = vae_latent
                             wav_pred = self.wavvae.decode(x)[0,0].to(torch.float32)
                         
-                        with self._track(f"segment_{seg_i}_postprocess"):
+                        with self._track(f"postprocess"):
                             ''' Post-processing '''
                             # Trim prompt wav
                             wav_pred = wav_pred[vae_latent.size(1)*self.vae_stride*self.hop_size:].cpu().numpy()
@@ -376,24 +396,23 @@ class MegaTTS3DiTInfer():
 
                             # Apply hamming window
                             wav_pred_.append(wav_pred)
-                            
+
                         segment_time = time.time() - segment_start
                         all_seg_times.append(segment_time)
-                        logging.info(f"Segment {seg_i} processed in {segment_time:.4f}s")
+                        print(f"Segment {seg_i} processed in {segment_time:.4f}s")
 
                 with self._track("combine_segments"):
                     wav_pred = combine_audio_segments(wav_pred_, sr=self.sr).astype(float)
-                
+
                 avg_segment_time = sum(all_seg_times)/len(all_seg_times) if all_seg_times else 0
-                logging.info(f"Average segment processing time: {avg_segment_time:.4f}s")
-                
+                print(f"Average segment processing time: {avg_segment_time:.4f}s")
+
                 return to_wav_bytes(wav_pred, self.sr)
 
     def log_performance_summary(self):
-        """Log a summary of performance metrics."""
-        if self.enable_profiling and self.perf_tracker:
+        """Log a summary of performance metrics"""
+        if self.enable_logging and self.perf_tracker:
             self.perf_tracker.log_summary()
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -403,25 +422,26 @@ if __name__ == '__main__':
     parser.add_argument('--time_step', type=int, default=32, help='Inference steps of Diffusion Transformer')
     parser.add_argument('--p_w', type=float, default=1.6, help='Intelligibility Weight')
     parser.add_argument('--t_w', type=float, default=2.5, help='Similarity Weight')
-    parser.add_argument('--profile', action='store_true', help='Enable performance profiling')
+    parser.add_argument('--logging', action='store_true', help='Enable timing logging')
+    parser.add_argument('--logging_output', type=str, default='timing_logging.log', help='Output file for timing log')
     args = parser.parse_args()
     wav_path, input_text, out_path, time_step, p_w, t_w = args.input_wav, args.input_text, args.output_dir, args.time_step, args.p_w, args.t_w
 
     # Overall timing
     start_time = time.time()
-    
-    infer_ins = MegaTTS3DiTInfer(enable_profiling=args.profile)
+
+    infer_ins = MegaTTS3DiTInfer(enable_logging=args.logging)
 
     with open(wav_path, 'rb') as file:
         file_content = file.read()
 
     print(f"| Start processing {wav_path}+{input_text}")
-    
+
     preprocess_start = time.time()
     resource_context = infer_ins.preprocess(file_content, latent_file=wav_path.replace('.wav', '.npy'))
     preprocess_time = time.time() - preprocess_start
     print(f"| Preprocessing completed in {preprocess_time:.2f}s")
-    
+
     inference_start = time.time()
     wav_bytes = infer_ins.forward(resource_context, input_text, time_step=time_step, p_w=p_w, t_w=t_w)
     inference_time = time.time() - inference_start
@@ -430,10 +450,9 @@ if __name__ == '__main__':
     print(f"| Saving results to {out_path}/[P]{input_text[:20]}.wav")
     os.makedirs(out_path, exist_ok=True)
     save_wav(wav_bytes, f'{out_path}/[P]{input_text[:20]}.wav')
-    
+
     total_time = time.time() - start_time
     print(f"| Total processing time: {total_time:.2f}s")
-    
-    # Log performance summary if profiling is enabled
-    if args.profile:
+
+    if args.logging:
         infer_ins.log_performance_summary()
