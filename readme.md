@@ -125,6 +125,15 @@ python tts/infer_cli.py --input_wav 'assets/Chinese_prompt.wav'  --input_text "�
 # will increase the generated speech's expressiveness and similarity (especially for some emotional cases).
 python tts/infer_cli.py --input_wav 'assets/English_prompt.wav' --input_text 'As his long promised tariff threat turned into reality this week, top human advisers began fielding a wave of calls from business leaders, particularly in the automotive sector, along with lawmakers who were sounding the alarm.' --output_dir ./gen --p_w 2.0 --t_w 3.0
 ```
+
+> [!TIP]
+> You can run `infer_cli_log.py` with a `--logging` flag to track the time spent at each step, such as:
+> ```
+> python -m tts.infer_cli_log --input_wav 'assets/English_prompt.wav' --input_text 'As his long promised tariff threat turned into reality this week, top human advisers began fielding a wave of calls from business leaders, particularly in the automotive sector, along with lawmakers who were sounding the alarm.' --output_dir ./gen --p_w 2.0 --t_w 3.0 --logging
+> ```
+> This will show the startpoint and endpoint for each section and store a `timing_logging.log` file.
+
+
 **Command-Line Usage (for TTS with Accents)**
 ``` bash
 # When p_w (intelligibility weight) ≈ 1.0, the generated audio closely retains the speaker’s original accent. As p_w increases, it shifts toward standard pronunciation. 
