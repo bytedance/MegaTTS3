@@ -133,7 +133,6 @@ python tts/infer_cli.py --input_wav 'assets/English_prompt.wav' --input_text 'As
 > ```
 > This will show the startpoint and endpoint for each section and store a `timing_logging.log` file.
 
-
 **Command-Line Usage (for TTS with Accents)**
 ``` bash
 # When p_w (intelligibility weight) ≈ 1.0, the generated audio closely retains the speaker’s original accent. As p_w increases, it shifts toward standard pronunciation. 
