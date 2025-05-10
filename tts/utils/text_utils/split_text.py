@@ -202,6 +202,20 @@ def chunk_text_chinesev2(text, limit=60, look_ahead_limit=30):
     if current_chunk:
         result.append(''.join(current_chunk))
 
+    # 英文标点替换为中文标点
+    punctuation_map = {
+        '.': '。',
+        ',': '，',
+        '!': '！',
+        '?': '？',
+        ';': '；',
+        ':': '：'
+    }
+    
+    for i in range(len(result)):
+        for eng_punc, cn_punc in punctuation_map.items():
+            result[i] = result[i].replace(eng_punc, cn_punc)
+
     return result
 
 if __name__ == '__main__':
