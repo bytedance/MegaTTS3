@@ -199,7 +199,11 @@ def mel_filters(device, n_mels: int) -> torch.Tensor:
     with np.load(filters_path, allow_pickle=False) as f:
         return torch.from_numpy(f[f"mel_{n_mels}"]).to(device)
 
-def load_audio(file: str, sr: int = 16000):
+SAMPLE_RATE = 16000
+N_FFT = 400
+HOP_LENGTH = 160
+
+def load_audio(file: str, sr: int = SAMPLE_RATE):
     """
     Open an audio file and read as mono waveform, resampling as necessary
 
