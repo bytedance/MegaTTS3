@@ -13,6 +13,5 @@ transformers>=4.41.2,<=4.49.0,!=4.46.*,!=4.47.*,!=4.48.*;python_version<'3.10'
 transformers>=4.41.2,<=4.49.0,!=4.46.*,!=4.47.*,!=4.48.0;python_version>='3.10'
 x-transformers==1.44.4
 torchdiffeq==0.2.5
-openai-whisper==20240930
 httpx==0.28.1
 gradio==5.23.1
