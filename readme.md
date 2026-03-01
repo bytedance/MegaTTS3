@@ -151,13 +151,13 @@ python tts/gradio_api.py
 
 **Usage**: 1) Prepare the finetuning dataset for our model; 2) Filter the large-scale speech dataset (if the aligner fails to align a certain speech clip, it is likely to be noisy); 3) Phoneme recognition; 4) Speech segmentation.
 
-### Graphme-to-Phoneme Model
-**Description:** a Qwen2.5-0.5B model finetuned for robust graphme-to-phoneme conversion.
+### Grapheme-to-Phoneme Model
+**Description:** a Qwen2.5-0.5B model finetuned for robust grapheme-to-phoneme conversion.
 
-**Usage**: Graphme-to-phoneme conversion.
+**Usage**: Grapheme-to-phoneme conversion.
 
 ### WaveVAE
-**Description:** a strong waveform VAE that can compress 24 kHz speeche into 25 Hz acoustic latent and reconstruct the original wave almost losslessly.
+**Description:** a strong waveform VAE that can compress 24 kHz speech into 25 Hz acoustic latent and reconstruct the original wave almost losslessly.
 
 **Usage:** 1) Acoustic latents can provide a more compact and discriminative training target for speech synthesis models compared to mel-spectrograms, accelerating convergence; 2) Used as acoustic latents for voice conversion; 3) High-quality vocoder.
 
