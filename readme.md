@@ -48,6 +48,10 @@ cd MegaTTS3
 conda create -n megatts3-env python=3.10
 conda activate megatts3-env
 pip install -r requirements.txt
+# [Note] if this fails to build openai-whisper with `ModuleNotFoundError: No module named 'pkg_resources'`,
+# that's a pip/PEP517 build-isolation issue on newer pip, not GPU-related. Retry with:
+#   pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124  (or your CUDA version)
+#   pip install --no-build-isolation -r requirements.txt
 
 # Set the root directory
 export PYTHONPATH="/path/to/MegaTTS3:$PYTHONPATH"
@@ -117,6 +121,8 @@ The pretrained checkpoint can be found at [Google Drive](https://drive.google.co
 
 > [!IMPORTANT]  
 > For security issues, we do not upload the parameters of WaveVAE encoder to the above links. You can only use the pre-extracted latents from [link1](https://drive.google.com/drive/folders/1QhcHWcy20JfqWjgqZX1YM3I6i9u4oNlr?usp=sharing) for inference. If you want to synthesize speech for speaker A, you need "A.wav" and "A.npy" in the same directory. If you have any questions or suggestions for our model, please email us.
+>
+> **Common pitfall:** if you run inference with your own recording and only have the `.wav` (no matching `.npy` requested via the process above), you'll get `FileNotFoundError: ... .npy` — this is expected (the encoder that would compute it isn't released), not a bug.
 > 
 > This project is primarily intended for academic purposes. For academic datasets requiring evaluation, you may upload them to the voice request queue in [link2](https://drive.google.com/drive/folders/1gCWL1y_2xu9nIFhUX_OW5MbcFuB7J5Cl?usp=sharing) (within 24s for each clip). After verifying that your uploaded voices are free from safety issues, we will upload their latent files to [link1](https://drive.google.com/drive/folders/1QhcHWcy20JfqWjgqZX1YM3I6i9u4oNlr?usp=sharing) as soon as possible.
 > 
