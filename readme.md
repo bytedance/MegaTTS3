@@ -78,8 +78,8 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # [Note] if you encounter bugs related with `ffprobe` or `ffmpeg`, you can install it through `conda install -c conda-forge ffmpeg`
 
 # Set environment variable for root directory
-set PYTHONPATH="C:\path\to\MegaTTS3;%PYTHONPATH%" # Windows
-$env:PYTHONPATH="C:\path\to\MegaTTS3;%PYTHONPATH%" # Powershell on Windows
+set "PYTHONPATH=C:\path\to\MegaTTS3;%PYTHONPATH%" # Command Prompt
+$env:PYTHONPATH="C:\path\to\MegaTTS3;$env:PYTHONPATH" # PowerShell
 conda env config vars set PYTHONPATH="C:\path\to\MegaTTS3;%PYTHONPATH%" # For conda users
 
 # [Optional] Set GPU
