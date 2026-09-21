@@ -22,15 +22,39 @@ import pyloudnorm as pyln
 from pydub import AudioSegment
 
 
+def loudness_norm(wav, loudness_src, loudness_tgt):
+    """Scale `wav` from `loudness_src` to `loudness_tgt` LUFS, then de-clip.
+
+    `pyln.Meter.integrated_loudness` returns -inf for any signal that stays
+    below the BS.1770 absolute gate (digital silence, or anything quieter than
+    about -70 LUFS). Feeding that to `pyln.normalize.loudness` yields an
+    infinite gain, which turns the segment into NaN/Inf instead of leaving it
+    quiet. Skip the rescaling in that case rather than destroying the samples.
+    """
+    if np.isfinite(loudness_src) and np.isfinite(loudness_tgt):
+        wav = pyln.normalize.loudness(wav, loudness_src, loudness_tgt)
+    peak = np.abs(wav).max()
+    if peak >= 1:
+        wav = wav / peak * 0.95
+    return wav
+
+
 def to_wav_bytes(wav, sr, norm=False):
     wav = wav.astype(float)
     if norm:
         meter = pyln.Meter(sr)  # create BS.1770 meter
         loudness = meter.integrated_loudness(wav)
-        wav = pyln.normalize.loudness(wav, loudness, -18.0)
-        if np.abs(wav).max() >= 1:
-            wav = wav / np.abs(wav).max() * 0.95
+        wav = loudness_norm(wav, loudness, -18.0)
     wav = wav * 32767
+    if not np.all(np.isfinite(wav)):
+        # float -> np.int16 turns NaN/Inf into 0 (or -1) behind nothing louder
+        # than a RuntimeWarning, so a model that emitted non-finite samples is
+        # written out as a normal-sized but partly/entirely silent wav file.
+        raise ValueError(
+            f'Refusing to encode audio containing non-finite samples '
+            f'({int((~np.isfinite(wav)).sum())} of {wav.size}). The generated '
+            f'waveform is invalid; retry the synthesis instead of saving '
+            f'silent audio.')
     bytes_io = io.BytesIO()
     wavfile.write(bytes_io, sr, wav.astype(np.int16))
     return bytes_io.getvalue()

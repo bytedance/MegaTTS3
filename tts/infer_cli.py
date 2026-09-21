@@ -28,7 +28,7 @@ import pyloudnorm as pyln
 
 from tts.modules.ar_dur.commons.nar_tts_modules import LengthRegulator
 from tts.frontend_function import g2p, align, make_dur_prompt, dur_pred, prepare_inputs_for_dit
-from tts.utils.audio_utils.io import save_wav, to_wav_bytes, convert_to_wav_bytes, combine_audio_segments
+from tts.utils.audio_utils.io import save_wav, to_wav_bytes, convert_to_wav_bytes, combine_audio_segments, loudness_norm
 from tts.utils.commons.ckpt_utils import load_ckpt
 from tts.utils.commons.hparams import set_hparams, hparams
 from tts.utils.text_utils.text_encoder import TokenTextEncoder
@@ -248,11 +248,8 @@ class MegaTTS3DiTInfer():
                 # Trim prompt wav
                 wav_pred = wav_pred[vae_latent.size(1)*self.vae_stride*self.hop_size:].cpu().numpy()
                 # Norm generated wav to prompt wav's level
-                meter = pyln.Meter(self.sr)  # create BS.1770 meter
                 loudness_pred = self.loudness_meter.integrated_loudness(wav_pred.astype(float))
-                wav_pred = pyln.normalize.loudness(wav_pred, loudness_pred, self.loudness_prompt)
-                if np.abs(wav_pred).max() >= 1:
-                    wav_pred = wav_pred / np.abs(wav_pred).max() * 0.95
+                wav_pred = loudness_norm(wav_pred, loudness_pred, self.loudness_prompt)
 
                 # Apply hamming window
                 wav_pred_.append(wav_pred)
